@@ -1,0 +1,50 @@
+# -*- mode: ruby -*-
+# vim: ft=ruby
+
+
+# ---- Configuration variables ----
+
+GUI               = false # Enable/Disable GUI
+RAM               = 1000   # Default memory size in MB
+
+# Network configuration
+DOMAIN            = ".example.com"
+NETWORK           = "192.168.56."
+NETMASK           = "255.255.255.0"
+
+# Default Virtualbox .box
+# See: https://wiki.debian.org/Teams/Cloud/VagrantBaseBoxes
+BOX               = "drajen/freenas9"
+
+
+HOSTS = {
+  "freenas" => [NETWORK+"110", RAM, GUI, BOX, "nas.sh"],  
+}
+
+# ---- Vagrant configuration ----
+
+Vagrant.configure(2) do |config|
+  HOSTS.each do | (name, cfg) |
+    ipaddr, ram, gui, box, provisioning_script = cfg
+
+    config.ssh.shell = "bash -c 'BASH_ENV=/etc/profile exec bash'"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+    config.vm.network "forwarded_port", guest: 80, host: 8080
+    config.vm.define name do |machine|
+      machine.vm.box   = box
+      machine.vm.guest = :linux
+
+      machine.vm.provider "virtualbox" do |vbox|
+        vbox.gui    = gui
+        vbox.memory = ram
+        vbox.name = name
+      end
+
+      machine.vm.hostname = name + DOMAIN
+      machine.vm.network 'private_network', ip: ipaddr, netmask: NETMASK, name: 'vboxnet0', adapter:2
+    end
+
+
+  end # HOSTS-each
+
+end
